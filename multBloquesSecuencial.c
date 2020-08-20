@@ -3,15 +3,18 @@
 #include <stdlib.h>
 #include <math.h>
 
+#define MIN(a, b) ((a)<(b) ? (a) : (b))
+
 /* Time in seconds from some point in the past */
 double dwalltime();
-
-void producto(double *A,double *B,double *C, int r,int N,int sizeMatrix,int sizeBlock);
+void producto(double *A,double *B,double *C, int N);
+void productoBloques(double *A,double *B,double *C, int N, int r);
 void crearIdentidad(double *S, int sizeBlock, int sizeMatrix,int N,int r);
+void inicializarMatrix(double *S, int sizeMatrix);
 void crearMatriz(double *S, int sizeMatrix);
 void imprimeMatriz(double *S,int N,int r);
+void imprimeMatriz2(double *M, int N);
 void imprimeVector(double *S, int sizeMatrix);
-
 
 int main (int argc, char *argv[]){
 
@@ -21,7 +24,7 @@ int main (int argc, char *argv[]){
  double timetick;
 
 
-//El tamano de la matriz sera n= N*r , donde N y r se reciben
+//El tamano de la matriz sera n = N*r , donde N y r se reciben
 //por parametro se tendran N*N bloques de r*r cada uno
 
 if (argc < 4){
@@ -45,34 +48,41 @@ if (argc < 4){
  B= (double *)malloc(sizeMatrix*sizeof(double)); //aloca memoria para B
  C= (double *)malloc(sizeMatrix*sizeof(double)); //aloca memoria para C
 
- crearMatriz(A, sizeMatrix);			//Inicializa A 
- crearIdentidad(B,sizeBlock,sizeMatrix,N,r); //Inicializa B como matriz identidad
+ crearMatriz(A, sizeMatrix);	//Inicializa A 
+ crearMatriz(B, sizeMatrix);  //Inicializa B
+ inicializarMatrix(C, sizeMatrix); 
 
-  timetick = dwalltime();
- producto(A,B,C,r,N,sizeMatrix,sizeBlock);
-  printf("Tiempo en segundos %f \n", dwalltime() - timetick);
+ timetick = dwalltime();
+ productoBloques(A,B, C, n, r);
+ printf("Tiempo en segundos %f \n", dwalltime() - timetick);
 
 //tiempo
- if (imprimir ==1){
-     printf("\n\n  A (como esta almacenada): \n" );
+ if (imprimir == 1){
+    printf("\n\n  A (como esta almacenada): \n" );
     imprimeVector(A, sizeMatrix);
 
-     printf("\n\n  B (como esta almacenada): \n" );
-    imprimeVector(B,sizeMatrix);
+    printf("\n\n  B (como esta almacenada): \n" );
+    imprimeVector(B, sizeMatrix);
+
+    printf("\n\n  C (como esta almacenada): \n" );
+    imprimeVector(C, sizeMatrix);
 
     printf("\n\n  A: \n" );
-    imprimeMatriz(A,N,r);
+    imprimeMatriz2(A, n);
+    //imprimeMatriz2(A,n);
 
-    printf(" \n\n B: \n" );
-    imprimeMatriz(B,N,r);
+    printf("\n\n B: \n" );
+    imprimeMatriz2(B, n);
+    //imprimeMatriz2(B,n);
 
     printf("\n\n  C: \n" );
-    imprimeMatriz(C,N,r);
+    imprimeMatriz2(C, n);
+    //imprimeMatriz(C,N,r);
 
  } 
 
 
- printf(" \n\n Realizando comprobacion ... \n" );
+/* printf(" \n\n Realizando comprobacion ... \n" );
  for (i=0;i<sizeMatrix ;i++ )
  {
 	 if (A[i]!=C[i])
@@ -80,6 +90,7 @@ if (argc < 4){
        printf("\n Error %f", C[i] );
 	 }
  }
+ */
 //imprimir tiempo
 
  free(A);
@@ -89,32 +100,45 @@ if (argc < 4){
  return 0;
 } //FIN MAIN
 
+void producto(double *A,double *B,double *C, int N){
+  int i, j, k;
+  for(i=0;i<N;i++){
+    for(j=0;j<N;j++){
+      C[i*N+j] = 0.0;
+      for(k=0;k<N;k++){
+        C[i*N+j] += A[i*N+k] * B[k*N+j];
+      }
+    }
+  }   
+}
 
-//SOLO PARA MATRICES DE IGUAL DIMENSION DE BLOQUES (N)
-void producto(double *A,double *B,double *C, int r,int N,int sizeMatrix, int sizeBlock){
-   int I,J,K,i,j,k;
-   int despA, despB, despC,desp;
+void productoBloques(double *A,double *B,double *C, int N, int r){
+  int kk, jj, i, j, k;
 
- for (i=0; i<sizeMatrix ;i++)
-	  C[i]=0.0;
- 
-	for (I=0;I<N;I++){
-		for (J=0;J<N;J++){
-			despC = (I*N+J)*sizeBlock;
-			for (K=0;K<N;K++){
-				despA = (I*N+K)*sizeBlock;
-				despB = (K*N+J)*sizeBlock;
-				for (i=0;i<r;i++){
-					for (j=0;j<r;j++){
-						desp = despC + i*r+j;
-						for (k=0;k<r;k++){
-							C[desp] += A[despA + i*r+k]*B[despB + k*r+j]; 
-						};
-					}
-				};
-			};
-		};	
-	}; 
+  for(jj=0;jj<N;jj+= r){
+        for(kk=0;kk<N;kk+= r){
+                for(i=0;i<N;i++){
+                        for(j = jj; j<((jj+r)>N?N:(jj+r)); j++){
+                                double temp = 0.0;
+                                //printf("C[%d] += ", i*N+j);
+                                for(k = kk; k<((kk+r)>N?N:(kk+r)); k++){
+                                        temp += A[i*N+k]*B[k*N+j];
+                                        //printf("A[%d] * B[%d] + ", i*N+k, k*N+j);
+                                }
+                                C[i*N+j] += temp;
+                                //printf("\n");
+                        }
+                }
+         }
+   } 
+
+}
+
+void inicializarMatrix(double *S, int sizeMatrix){
+  int i;
+  for (i=0; i<sizeMatrix ;i++){
+    S[i]=0.0;
+  };
 }
 
 
@@ -140,7 +164,7 @@ void crearIdentidad(double *S, int sizeBlock, int sizeMatrix,int N,int r){
 void crearMatriz(double *S, int sizeMatrix){
   int i;
   for(i=0 ;i<sizeMatrix;i++){
-	S[i] = rand()%10;
+  	S[i] = i;
   };//end i
 }
 
@@ -148,11 +172,21 @@ void imprimeVector(double *S, int sizeMatrix){
   int i;
   printf("\n ");
   for(i=0 ;i<sizeMatrix;i++)
-	printf(" %f " ,S[i]);
+	   printf(" %.2f " ,S[i]);
  
   printf("\n\n ");
 }
 
+void imprimeMatriz2(double *M, int N){
+  int i,j;
+  printf("Contenido de la matriz:  \n ");
+  for(i=0 ;i<N;i++){
+    for(j=0; j<N;j++)
+      printf(" %.2f " ,M[i*N+j]);
+    printf("\n ");
+  }
+  printf("\n\n ");
+}
 
 void imprimeMatriz(double *S,int N,int r){
 // Imprime la matriz pasada por parametro
@@ -164,19 +198,17 @@ void imprimeMatriz(double *S,int N,int r){
     //para cada fila de bloques (I)
     for (i= 0; i< r; i++){
        for(J=0;J<N;J++){
-		   despB=(I*N+J)*r*r;
-	  for (j=0;j<r;j++){
-	     printf("%f ",S[despB+ i*r+j]);
-	
-	   };//end for j
-	};//end for J
+          despB=(I*N+J)*r*r;
+          for (j=0;j<r;j++){
+              printf("%.2f ",S[despB+ i*r+j]);
+          };//end for j
+        };//end for J
         printf("\n ");
-     };//end for i
+    };//end for i
 
   };//end for I
   printf(" \n\n");
 }
-
 
 /*****************************************************************/
 
@@ -191,4 +223,3 @@ double dwalltime()
 	sec = tv.tv_sec + tv.tv_usec/1000000.0;
 	return sec;
 }
-
