@@ -4,12 +4,12 @@
 #include <math.h>
 
 #define MIN(a, b) ((a)<(b) ? (a) : (b))
+#define MAX(a, b) ((a)>(b) ? (a) : (b))
 
 /* Time in seconds from some point in the past */
 double dwalltime();
 void producto(double *A,double *B,double *C, int N);
 void productoBloques(double *A,double *B,double *C, int N, int r);
-void crearIdentidad(double *S, int sizeBlock, int sizeMatrix,int N,int r);
 void inicializarMatrix(double *S, int sizeMatrix);
 void crearMatriz(double *S, int sizeMatrix);
 void imprimeMatriz(double *S,int N,int r);
@@ -23,25 +23,22 @@ int main (int argc, char *argv[]){
  double *C; // Matriz C
  double timetick;
 
-
-//El tamano de la matriz sera n = N*r , donde N y r se reciben
-//por parametro se tendran N*N bloques de r*r cada uno
-
 if (argc < 4){
-  printf("\n Falta un parametro ");
-  printf("\n 1. Cantidad de bloques por dimension ");
-  printf("\n 2. Dimension de cada bloque ");
-  printf("\n 3. 0/1 para imprimir/no imprimir resultados ");
+  printf("\n Faltan parametros ");
+  //printf("\n 1. Cantidad de bloques por dimension ");
+  printf("\n 1. Tamaño de la matriz ");
+  //printf("\n 2. Dimension de cada bloque ");
+  printf("\n 2. Tamaño de cada bloque por dimensión ");
+  printf("\n 3. 0 no imprime el resultado, 1 imprime el resultado ");
+  printf("\n\n");
   return 0;
 }
 
  int N = atoi(argv[1]);
  int r = atoi(argv[2]);
- int imprimir=atoi(argv[3]);
+ int imprimir = atoi(argv[3]);
 
- int n = N*r; //dimension de la matriz
- int sizeMatrix=n*n; //cantidad total de datos matriz
- int sizeBlock=r*r; //cantidad total de datos del bloque
+ int sizeMatrix = N*N; //cantidad total de datos matriz
  int i;
 
  A= (double *)malloc(sizeMatrix*sizeof(double)); //aloca memoria para A
@@ -53,10 +50,9 @@ if (argc < 4){
  inicializarMatrix(C, sizeMatrix); 
 
  timetick = dwalltime();
- productoBloques(A,B, C, n, r);
+ productoBloques(A,B, C, N, r);
  printf("Tiempo en segundos %f \n", dwalltime() - timetick);
 
-//tiempo
  if (imprimir == 1){
     printf("\n\n  A (como esta almacenada): \n" );
     imprimeVector(A, sizeMatrix);
@@ -68,30 +64,14 @@ if (argc < 4){
     imprimeVector(C, sizeMatrix);
 
     printf("\n\n  A: \n" );
-    imprimeMatriz2(A, n);
-    //imprimeMatriz2(A,n);
+    imprimeMatriz2(A, N);
 
     printf("\n\n B: \n" );
-    imprimeMatriz2(B, n);
-    //imprimeMatriz2(B,n);
+    imprimeMatriz2(B, N);
 
     printf("\n\n  C: \n" );
-    imprimeMatriz2(C, n);
-    //imprimeMatriz(C,N,r);
-
- } 
-
-
-/* printf(" \n\n Realizando comprobacion ... \n" );
- for (i=0;i<sizeMatrix ;i++ )
- {
-	 if (A[i]!=C[i])
-	 {
-       printf("\n Error %f", C[i] );
-	 }
+    imprimeMatriz2(C, N);
  }
- */
-//imprimir tiempo
 
  free(A);
  free(B);
@@ -114,24 +94,19 @@ void producto(double *A,double *B,double *C, int N){
 
 void productoBloques(double *A,double *B,double *C, int N, int r){
   int kk, jj, i, j, k;
-
   for(jj=0;jj<N;jj+= r){
         for(kk=0;kk<N;kk+= r){
                 for(i=0;i<N;i++){
-                        for(j = jj; j<((jj+r)>N?N:(jj+r)); j++){
+                        for(j = jj; j < ((jj+r)>N?N:(jj+r)); j++){
                                 double temp = 0.0;
-                                //printf("C[%d] += ", i*N+j);
-                                for(k = kk; k<((kk+r)>N?N:(kk+r)); k++){
+                                for(k = kk; k < ((kk+r)>N?N:(kk+r)); k++){
                                         temp += A[i*N+k]*B[k*N+j];
-                                        //printf("A[%d] * B[%d] + ", i*N+k, k*N+j);
                                 }
                                 C[i*N+j] += temp;
-                                //printf("\n");
                         }
                 }
          }
    } 
-
 }
 
 void inicializarMatrix(double *S, int sizeMatrix){
@@ -139,26 +114,6 @@ void inicializarMatrix(double *S, int sizeMatrix){
   for (i=0; i<sizeMatrix ;i++){
     S[i]=0.0;
   };
-}
-
-
-void crearIdentidad(double *S, int sizeBlock, int sizeMatrix,int N,int r){
-//Inicializa la matriz S como una matriz identidad
-//pone cada bloque en 0, y a los bloques diagonales pone 1 en su diag. interna
-
-//inicializa en cero la matriz
-  int i,j;
-  for (i=0; i<sizeMatrix ;i++){
-	  S[i]=0.0;
-  };//end for j
-
-//inicializa los N bloques de la diagonal como identidad
-  for (i=0; i<sizeMatrix; i=i+(N+1)*sizeBlock){
-	//en i commienza el bloque a actualizar
-	  for (j=0; j<sizeBlock; j=j+r+1){
-		  S[i+j]= 1.0;
-	  }
-  };//end for i
 }
 
 void crearMatriz(double *S, int sizeMatrix){
@@ -185,7 +140,7 @@ void imprimeMatriz2(double *M, int N){
       printf(" %.2f " ,M[i*N+j]);
     printf("\n ");
   }
-  printf("\n\n ");
+  printf("\n");
 }
 
 void imprimeMatriz(double *S,int N,int r){
@@ -218,7 +173,6 @@ double dwalltime()
 {
 	double sec;
 	struct timeval tv;
-
 	gettimeofday(&tv,NULL);
 	sec = tv.tv_sec + tv.tv_usec/1000000.0;
 	return sec;
