@@ -1,6 +1,6 @@
 
 /*********************************************************************************************
- * Archivo: 2d_ciclico.c
+ * Archivo: 2D_ciclico.c
  *
  * Multiplicacion de matrices utilizando la Interfaz de Paso de Mensajes MPI
  * y el particionamiento 2-D ciclico.
@@ -327,20 +327,19 @@ void asignarBUFFEResultado(double *C, double *BUFFER_C, int N, int r, indice ind
  * Utiliza los BUFFER_A y BUFFER_B como parametros de entrada y
  * el resultado lo almacena en BUFFER_C
  */
-//void multiplicarSubMatriz(double BUFFER_A[r][N], double BUFFER_B[N][r], double BUFFER_C[r][r]){
 void multiplicarSubMatriz(double *BUFFER_A, double *BUFFER_B, double *BUFFER_C, int N, int r){
 
-    inicializarBufferC(BUFFER_C, r);
+    //inicializarBufferC(BUFFER_C, r);
 
     int i, j, k;
     for (i = 0; i < r; i++){
         for (j = 0; j < r; j++){
         	double temp = 0;
             for (k = 0; k < N; k++){
-            	//BUFFER_C[i] [j] += BUFFER_A[i] [k] * BUFFER_B[k] [j];
                 temp += BUFFER_A[i * N + k] * BUFFER_B[k * r + j];
             }
-            BUFFER_C[ i * r + j] += temp;
+            //BUFFER_C[ i * r + j] += temp;
+            BUFFER_C[ i * r + j] = temp;
         }
     }
 }
