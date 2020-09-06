@@ -9,7 +9,7 @@
  * mpicc -o <nombre executable> 2d_ciclico.c
  *
  * Para ejecutar
- * mpirun -np <procesos> <nombre ejecutable> <sizeMatrix> <sizeBlock> <print?>
+ * mpirun -np <procesos> <nombre ejecutable> <sizeMatrix> <sizeBlock> <threads> <print?>
  **********************************************************************************************/
 
 #include <stdio.h>
@@ -17,6 +17,7 @@
 #include <sys/time.h>
 #include <mpi.h>
 #include <stdbool.h>
+#include <omp.h>
 
 struct indices    /* Tipo de dato para representar */
 {	int i, j;     /* los ndices de una matriz */
@@ -30,13 +31,15 @@ void cargarBuffers(double *A, double *B, double *BUFFER_A, double *BUFFER_B, int
 void inicializarBufferC(double *BUFFER_C, int r);
 void asignarBUFFEResultado(double *C, double *BUFFER_C, int N, int r, indice indi);
 void multiplicarSubMatriz(double *BUFFER_A, double *BUFFER_B, double *BUFFER_C, int N, int r);
+void multiplicarSubMatrizOpenMP(double *BUFFER_A, double *BUFFER_B, double *BUFFER_C, int N, int r, int t);
 long get_integer_arg(int argc, char* argv[], int arg_index, long min_val, const char* description, const char* usage_msg, bool print_flag, void (*mpi_finalize) (void) );
 void error_exit(char* msg);
 
 int main(int argc, char *argv[])
 {
-	int N = 4;   /* tamanho de la matriz */
-	int r = 2;   /* tamanho de la submatriz (o bloques) */
+	int N;   /* tamanio de la matriz */
+	int r;   /* tamanio de la submatriz (o bloques) */
+    	int t;   /* cantidad de threads */
 	bool print; /* 1 imprime resultado, 0 no imprime resultado */
 	int subnum;	 /* numero de sub-matrices en una fila/columna de la matriz */
 	int nproc;	 /* numero de nodos MPI */
@@ -51,17 +54,19 @@ int main(int argc, char *argv[])
 	int i, j, k;
 	double t1, t2;
 
-    MPI_Status status;
+   	 MPI_Status status;
+
 
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &myid);
 	MPI_Comm_size(MPI_COMM_WORLD, &nproc);
 
-	/* command-line arguments */
-    char *usage_msg = "usage is %s sizeMatrix sizeBlock print? \n";
+	/* argumentos de linea de comandos */
+    char *usage_msg = "usage is %s sizeMatrix sizeBlock threads print? \n";
 	N = get_integer_arg(argc, argv, 1, 1, "sizeMatrix", usage_msg, true, (void (*)(void))MPI_Finalize);
 	r = get_integer_arg(argc, argv, 2, 1, "sizeBlock", usage_msg, true, (void (*)(void))MPI_Finalize);
-    print = get_integer_arg(argc, argv, 3, 0, "print", usage_msg, true, (void (*)(void))MPI_Finalize);
+    t = get_integer_arg(argc, argv, 3, 1, "threads", usage_msg, true, (void (*)(void))MPI_Finalize);
+    print = get_integer_arg(argc, argv, 4, 0, "print", usage_msg, true, (void (*)(void))MPI_Finalize);
 
 	subnum = N / r;
 	if (subnum * r != N ) {
@@ -91,6 +96,7 @@ int main(int argc, char *argv[])
 		printf("Multiplicacion ...\n");
 		t1 = MPI_Wtime();
 
+
 		int tarea; /* Cantidad total de tareas disponibles */
 		for (tarea = 0; tarea < subnum*subnum; tarea++ ){
 
@@ -108,9 +114,14 @@ int main(int argc, char *argv[])
             }
             else{
                 /* Se multiplican localmente las sub-matrices */
-                multiplicarSubMatriz(BUFFER_A, BUFFER_B, BUFFER_C, N, r);
+                if( t == 1)
+                    multiplicarSubMatriz(BUFFER_A, BUFFER_B, BUFFER_C, N, r);
+                else
+                    multiplicarSubMatrizOpenMP(BUFFER_A, BUFFER_B, BUFFER_C, N, r, t);
+
                 asignarBUFFEResultado(C, BUFFER_C, N, r, indi);
             }
+
 
             if ( id_destino == nproc-1 ){
                 /* Se reciben todas las tareas distribuidas hasta el momento */
@@ -127,6 +138,7 @@ int main(int argc, char *argv[])
                     tarea_recibida++;
                 }
             }
+            
 		}
 
         if ( (nproc < r*r) && (((r*r) % nproc) != 0) ){
@@ -188,9 +200,12 @@ int main(int argc, char *argv[])
     			BUFFER_C = (double *)malloc(N*N*sizeof(double));
 
                 /* Se reciben los bloques de entrada, se multiplican y se envia el resultado */
-                MPI_Recv(BUFFER_A, r*N, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, &status);
+                MPI_Recv(BUFFER_A, N*r, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD, &status);
                 MPI_Recv(BUFFER_B, N*r, MPI_DOUBLE, 0, 2, MPI_COMM_WORLD, &status);
-                multiplicarSubMatriz(BUFFER_A, BUFFER_B, BUFFER_C, N, r);
+                if(t == 1)
+                    multiplicarSubMatriz(BUFFER_A, BUFFER_B, BUFFER_C, N, r);
+                else
+                    multiplicarSubMatrizOpenMP(BUFFER_A, BUFFER_B, BUFFER_C, N, r, t);
                 MPI_Send(BUFFER_C, r*r, MPI_DOUBLE, 0, 3, MPI_COMM_WORLD);
                 
                 free(BUFFER_A);
@@ -235,12 +250,13 @@ void imprimirMatriz(double *M, int F, int C)
  */
 void inicializarMatrices(double *A, double *B, double *C, int N)
 {
-    int i, j;
+    int i, j, indice;
 	for (i=0; i < N; i++){
 		for (j=0; j < N; j++) {
-			A[i*N+j] = i*N+j;
-			B[i*N+j] = i*N+j;
-			C[i*N+j]= 0;
+            indice = i*N+j;
+			A[indice] = indice;
+			B[indice] = indice;
+			C[indice] = 0;
 		}
 	}
 }
@@ -339,6 +355,24 @@ void multiplicarSubMatriz(double *BUFFER_A, double *BUFFER_B, double *BUFFER_C, 
                 temp += BUFFER_A[i * N + k] * BUFFER_B[k * r + j];
             }
             //BUFFER_C[ i * r + j] += temp;
+            BUFFER_C[ i * r + j] = temp;
+        }
+    }
+}
+
+void multiplicarSubMatrizOpenMP(double *BUFFER_A, double *BUFFER_B, double *BUFFER_C, int N, int r, int t){
+
+    int i, j, k;
+    double temp;
+
+    omp_set_num_threads(t);
+    #pragma omp parallel for shared(BUFFER_A,BUFFER_B,BUFFER_C,N,r)  private(j,k,temp) schedule(static)
+    for (i = 0; i < r; i++){
+        for (j = 0; j < r; j++){
+            temp = 0;
+            for (k = 0; k < N; k++){
+                temp += BUFFER_A[i * N + k] * BUFFER_B[k * r + j];
+            }
             BUFFER_C[ i * r + j] = temp;
         }
     }
