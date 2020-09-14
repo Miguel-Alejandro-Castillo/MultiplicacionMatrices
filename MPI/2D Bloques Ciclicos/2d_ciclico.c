@@ -9,7 +9,7 @@
  * mpicc -fopenmp -o <nombre executable> 2d_ciclico.c
  *
  * Para ejecutar:
- * mpirun -np <cantProcesos> <nombre ejecutable> <sizeMatrix> <sizeBlock> <threads> <print?>
+ * mpirun -np <proceses> --hostfile <file_hosts> <ejecutable> <sizeMatrix> <sizeBlock> <threads> <print?>
  **********************************************************************************************/
 
 #include <stdio.h>
@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 
 	/* argumentos de linea de comandos */
     //char *usage_msg = "Use %s sizeMatrix sizeBlock threads print? \n";
-   char *usage_msg = "Use mpirun -np <processes> %s <sizeMatrix> <sizeBlock> <threads> <print?> \n";
+   char *usage_msg = "Use mpirun -np <processes> --hostfile <file_hosts> %s <sizeMatrix> <sizeBlock> <threads> <print?> \n";
 	N = get_integer_arg(argc, argv, 1, 1, "sizeMatrix", usage_msg, true, (void (*)(void))MPI_Finalize);
 	r = get_integer_arg(argc, argv, 2, 1, "sizeBlock", usage_msg, true, (void (*)(void))MPI_Finalize);
     t = get_integer_arg(argc, argv, 3, 1, "threads", usage_msg, true, (void (*)(void))MPI_Finalize);
