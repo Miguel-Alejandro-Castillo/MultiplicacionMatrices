@@ -1,15 +1,15 @@
 
 /*********************************************************************************************
- * Archivo: 2D_ciclico.c
+ * Archivo: 2d_ciclico.c
  *
  * Multiplicacion de matrices utilizando la Interfaz de Paso de Mensajes MPI
  * y el particionamiento 2-D ciclico.
  *
  * Para compilar:
- * mpicc -o <nombre executable> 2d_ciclico.c
+ * mpicc -fopenmp -o <nombre executable> 2d_ciclico.c
  *
- * Para ejecutar
- * mpirun -np <procesos> <nombre ejecutable> <sizeMatrix> <sizeBlock> <threads> <print?>
+ * Para ejecutar:
+ * mpirun -np <cantProcesos> <nombre ejecutable> <sizeMatrix> <sizeBlock> <threads> <print?>
  **********************************************************************************************/
 
 #include <stdio.h>
@@ -18,6 +18,10 @@
 #include <mpi.h>
 #include <stdbool.h>
 #include <omp.h>
+#include <unistd.h>
+
+#define BASENAME_CSV "result-2d.csv"
+#define HEADER_CSV "time,sizeMatrix,sizeBlock,threads\n"
 
 struct indices    /* Tipo de dato para representar */
 {	int i, j;     /* los ndices de una matriz */
@@ -34,12 +38,13 @@ void multiplicarSubMatriz(double *BUFFER_A, double *BUFFER_B, double *BUFFER_C, 
 void multiplicarSubMatrizOpenMP(double *BUFFER_A, double *BUFFER_B, double *BUFFER_C, int N, int r, int t);
 long get_integer_arg(int argc, char* argv[], int arg_index, long min_val, const char* description, const char* usage_msg, bool print_flag, void (*mpi_finalize) (void) );
 void error_exit(char* msg);
+FILE* makeOutfile(char* basename);
 
 int main(int argc, char *argv[])
 {
 	int N;   /* tamanio de la matriz */
 	int r;   /* tamanio de la submatriz (o bloques) */
-    	int t;   /* cantidad de threads */
+    int t;   /* cantidad de threads */
 	bool print; /* 1 imprime resultado, 0 no imprime resultado */
 	int subnum;	 /* numero de sub-matrices en una fila/columna de la matriz */
 	int nproc;	 /* numero de nodos MPI */
@@ -53,8 +58,7 @@ int main(int argc, char *argv[])
 
 	int i, j, k;
 	double t1, t2;
-
-   	 MPI_Status status;
+    MPI_Status status;
 
 
 	MPI_Init(&argc, &argv);
@@ -176,6 +180,12 @@ int main(int argc, char *argv[])
 			printf("ok!!\n\n");
 		}
 		printf("\nDuración total de la multilplicacion de matrices %4f segundos\n", t2-t1);
+
+        char *basename = "";
+        FILE* outfile = makeOutfile(BASENAME_CSV);
+
+        fprintf(outfile, "%4f,%d,%d,%d\n", t2-t1,N,r,t);
+        fclose(outfile);
 
 		free(A);
 		free(B);
@@ -344,9 +354,6 @@ void asignarBUFFEResultado(double *C, double *BUFFER_C, int N, int r, indice ind
  * el resultado lo almacena en BUFFER_C
  */
 void multiplicarSubMatriz(double *BUFFER_A, double *BUFFER_B, double *BUFFER_C, int N, int r){
-
-    //inicializarBufferC(BUFFER_C, r);
-
     int i, j, k;
     for (i = 0; i < r; i++){
         for (j = 0; j < r; j++){
@@ -354,7 +361,6 @@ void multiplicarSubMatriz(double *BUFFER_A, double *BUFFER_B, double *BUFFER_C, 
             for (k = 0; k < N; k++){
                 temp += BUFFER_A[i * N + k] * BUFFER_B[k * r + j];
             }
-            //BUFFER_C[ i * r + j] += temp;
             BUFFER_C[ i * r + j] = temp;
         }
     }
@@ -418,6 +424,20 @@ void error_exit(char* msg) {
     if (msg != NULL) {
         fprintf(stderr, "%s", msg);
     }
-    //MPI_Finalize();
     exit(EXIT_FAILURE);
+}
+
+
+FILE* makeOutfile(char* basename) {
+    FILE *outfile;
+    if( access( basename, F_OK ) != -1 ) {
+       outfile = fopen(basename, "a");
+    } else {
+       outfile = fopen(basename, "w");
+       if(outfile != NULL)
+            fprintf(outfile, HEADER_CSV);
+    }
+    if (outfile == NULL)
+        fprintf(stderr, "Cannot open outfile %s\n", basename);
+    return outfile;
 }
