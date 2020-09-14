@@ -66,7 +66,8 @@ int main(int argc, char *argv[])
 	MPI_Comm_size(MPI_COMM_WORLD, &nproc);
 
 	/* argumentos de linea de comandos */
-    char *usage_msg = "usage is %s sizeMatrix sizeBlock threads print? \n";
+    //char *usage_msg = "Use %s sizeMatrix sizeBlock threads print? \n";
+   char *usage_msg = "Use mpirun -np <processes> %s <sizeMatrix> <sizeBlock> <threads> <print?> \n";
 	N = get_integer_arg(argc, argv, 1, 1, "sizeMatrix", usage_msg, true, (void (*)(void))MPI_Finalize);
 	r = get_integer_arg(argc, argv, 2, 1, "sizeBlock", usage_msg, true, (void (*)(void))MPI_Finalize);
     t = get_integer_arg(argc, argv, 3, 1, "threads", usage_msg, true, (void (*)(void))MPI_Finalize);
@@ -179,11 +180,9 @@ int main(int argc, char *argv[])
 			imprimirMatriz(C, N, N);
 			printf("ok!!\n\n");
 		}
-		printf("\nDuración total de la multilplicacion de matrices %4f segundos\n", t2-t1);
+		printf("\nDuración total de la multiplicacion de matrices %4f segundos\n", t2-t1);
 
-        char *basename = "";
         FILE* outfile = makeOutfile(BASENAME_CSV);
-
         fprintf(outfile, "%4f,%d,%d,%d\n", t2-t1,N,r,t);
         fclose(outfile);
 

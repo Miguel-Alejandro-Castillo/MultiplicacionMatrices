@@ -2,7 +2,11 @@
 #include <malloc.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdbool.h>
+#include <unistd.h>
 
+#define BASENAME_CSV "result-secuencial.csv"
+#define HEADER_CSV "time,sizeMatrix,sizeBlock\n"
 #define MIN(a, b) ((a)<(b) ? (a) : (b))
 #define MAX(a, b) ((a)>(b) ? (a) : (b))
 
@@ -15,28 +19,21 @@ void crearMatriz(double *S, int sizeMatrix);
 void imprimeMatriz(double *S,int N,int r);
 void imprimeMatriz2(double *M, int N);
 void imprimeVector(double *S, int sizeMatrix);
+long get_integer_arg(int argc, char* argv[], int arg_index, long min_val, const char* description, const char* usage_msg, bool print_flag, void (*fun) (void) );
+FILE* makeOutfile(char* basename);
 
 int main (int argc, char *argv[]){
 
  double *A; // Matriz A
  double *B; // Matriz B
  double *C; // Matriz C
- double timetick;
+ double t1, t2;
 
-if (argc < 4){
-  printf("\n Faltan parametros ");
-  //printf("\n 1. Cantidad de bloques por dimension ");
-  printf("\n 1. Tamaño de la matriz ");
-  //printf("\n 2. Dimension de cada bloque ");
-  printf("\n 2. Tamaño de cada bloque por dimensión ");
-  printf("\n 3. 0 no imprime el resultado, 1 imprime el resultado ");
-  printf("\n\n");
-  return 0;
-}
-
- int N = atoi(argv[1]);
- int r = atoi(argv[2]);
- int imprimir = atoi(argv[3]);
+ /* argumentos de linea de comandos */
+ char *usage_msg = "Use %s <sizeMatrix> <sizeBlock> <print?>\n";
+ int N = get_integer_arg(argc, argv, 1, 1, "sizeMatrix", usage_msg, true, NULL);
+ int r = get_integer_arg(argc, argv, 2, 1, "sizeBlock", usage_msg, true, NULL);
+ bool imprimir = get_integer_arg(argc, argv, 3, 0, "print", usage_msg, true, NULL);
 
  int sizeMatrix = N*N; //cantidad total de datos matriz
  int i;
@@ -49,20 +46,11 @@ if (argc < 4){
  crearMatriz(B, sizeMatrix);  //Inicializa B
  inicializarMatrix(C, sizeMatrix); 
 
- timetick = dwalltime();
+ t1 = dwalltime();
  productoBloques(A,B, C, N, r);
- printf("Tiempo en segundos %f \n", dwalltime() - timetick);
+ t2 = dwalltime();
 
- if (imprimir == 1){
-    printf("\n\n  A (como esta almacenada): \n" );
-    imprimeVector(A, sizeMatrix);
-
-    printf("\n\n  B (como esta almacenada): \n" );
-    imprimeVector(B, sizeMatrix);
-
-    printf("\n\n  C (como esta almacenada): \n" );
-    imprimeVector(C, sizeMatrix);
-
+ if (imprimir){
     printf("\n\n  A: \n" );
     imprimeMatriz2(A, N);
 
@@ -72,6 +60,12 @@ if (argc < 4){
     printf("\n\n  C: \n" );
     imprimeMatriz2(C, N);
  }
+
+ printf("\nDuración total de la multiplicacion de matrices %4f segundos\n", t2-t1);
+
+ FILE* outfile = makeOutfile(BASENAME_CSV);
+ fprintf(outfile, "%4f,%d,%d\n", t2-t1, N, r);
+ fclose(outfile);
 
  free(A);
  free(B);
@@ -163,6 +157,51 @@ void imprimeMatriz(double *S,int N,int r){
 
   };//end for I
   printf(" \n\n");
+}
+
+long get_integer_arg(int argc, char* argv[], int arg_index, 
+        long min_val, const char* description, const char* usage_msg,
+        bool print_flag, void (*fun) (void) )
+{
+    if (arg_index >= argc) {
+        if (print_flag)
+            fprintf(stderr, usage_msg, argv[0]);
+        if (fun != NULL) fun();
+        exit(EXIT_FAILURE);
+    }
+    char* end;
+    long rval = strtol(argv[arg_index], &end, 10);
+    if (*end != '\0') {
+        if (print_flag) {
+            fprintf(stderr, "%s debe ser un número entero\n", description);
+            fprintf(stderr, usage_msg, argv[0]);
+        }
+        if (fun != NULL) fun();
+        exit(EXIT_FAILURE);
+    }
+    if (rval < min_val) {
+        if (print_flag) {
+            fprintf(stderr, "%s debe ser al menos %ld\n", description, min_val);
+            fprintf(stderr, usage_msg, argv[0]);
+        }
+        if (fun != NULL) fun();
+        exit(EXIT_FAILURE);
+    }
+    return rval;
+}
+
+FILE* makeOutfile(char* basename) {
+    FILE *outfile;
+    if( access( basename, F_OK ) != -1 ) {
+       outfile = fopen(basename, "a");
+    } else {
+       outfile = fopen(basename, "w");
+       if(outfile != NULL)
+            fprintf(outfile, HEADER_CSV);
+    }
+    if (outfile == NULL)
+        fprintf(stderr, "Cannot open outfile %s\n", basename);
+    return outfile;
 }
 
 /*****************************************************************/
