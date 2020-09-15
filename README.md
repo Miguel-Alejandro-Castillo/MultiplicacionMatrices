@@ -1,4 +1,4 @@
-# Multiplicación de Matrices Cuadrados por Bloques MPI + OpenMP
+# Multiplicación de Matrices Cuadradas por Bloques MPI + OpenMP
 
 * Secuencial
   * Para compilar: gcc -o multBloques multBloques.c
