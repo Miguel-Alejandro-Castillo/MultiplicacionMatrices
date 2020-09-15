@@ -15,9 +15,9 @@
                     <br/> &lt;threads&gt; &nbsp;&nbsp; > &nbsp;&nbsp; 1
                     
  
- &lt;sizeMatriz&gt; => tamaño de la matriz <br/>
- &lt;sizeBlock&gt; => tamaño del bloque <br/>
- &lt;print?&gt; => 1 imprime el resultado, 0 caso contrario <br/>
- &lt;processes&gt; => cantidad de nodos <br/>
- &lt;file_hosts&gt; => archivo hostfile <br/>
- &lt;threads&gt; =>  cantidad de threads <br/>
+  &lt;sizeMatriz&gt; => tamaño de la matriz <br/>
+  &lt;sizeBlock&gt; => tamaño del bloque <br/>
+  &lt;print?&gt; => 1 imprime el resultado, 0 caso contrario <br/>
+  &lt;processes&gt; => cantidad de nodos <br/>
+  &lt;file_hosts&gt; => archivo hostfile <br/>
+  &lt;threads&gt; =>  cantidad de threads <br/>
