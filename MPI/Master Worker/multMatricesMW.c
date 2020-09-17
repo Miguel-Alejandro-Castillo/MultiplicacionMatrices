@@ -1,3 +1,18 @@
+/********************************************************************************************************
+ *
+ * Archivo: multMatricesMW.c
+ *
+ * Multiplicacion de matrices cuadradas por bloques utilizando la Interfaz de Paso de Mensajes MPI
+ * + OpenMP, modelo Master Worker
+ *
+ * Para compilar:
+ * mpicc -fopenmp -o <executable> multMatricesMW.c
+ *
+ * Para ejecutar:
+ * mpirun -np <processes> --hostfile <hostfile> <executable> <sizeMatrix> <sizeBlock> <threads> <print?>
+ *******************************************************************************************************/
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
