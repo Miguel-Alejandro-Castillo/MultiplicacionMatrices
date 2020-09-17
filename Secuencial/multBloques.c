@@ -87,13 +87,14 @@ void producto(double *A,double *B,double *C, int N){
 }
 
 void productoBloques(double *A,double *B,double *C, int N, int r){
-  int kk, jj, i, j, k;
+  int kk, jj, i, j, k; 
+  double temp;
   for(jj=0;jj<N;jj+= r){
         for(kk=0;kk<N;kk+= r){
                 for(i=0;i<N;i++){
-                        for(j = jj; j < ((jj+r)>N?N:(jj+r)); j++){
-                                double temp = 0.0;
-                                for(k = kk; k < ((kk+r)>N?N:(kk+r)); k++){
+                        for(j = jj; j < MIN(N, jj+r); j++){
+                                temp = 0.0;
+                                for(k = kk; k <  MIN(N, kk+r); k++){
                                         temp += A[i*N+k]*B[k*N+j];
                                 }
                                 C[i*N+j] += temp;
@@ -102,6 +103,7 @@ void productoBloques(double *A,double *B,double *C, int N, int r){
          }
    } 
 }
+
 
 void inicializarMatrix(double *S, int sizeMatrix){
   int i;
