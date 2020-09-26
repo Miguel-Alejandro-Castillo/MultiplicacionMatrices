@@ -1,8 +1,8 @@
 # Multiplicación de Matrices Cuadradas por Bloques MPI + OpenMP
 
 * Secuencial
-  * Para compilar: gcc -o multBloques multBloques.c
-  * Para ejecutar: ./multBloques &lt;sizeMatrix&gt; &lt;sizeBlock&gt; &lt;print?&gt;
+  * Para compilar: gcc -o matmul-blk matmul-blk.c
+  * Para ejecutar: ./matmul-blk &lt;sizeMatrix&gt; &lt;sizeBlock&gt;
   
 * Paralelo(Master Worker)
   *MPI
