@@ -4,14 +4,15 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<sys/time.h>
+#include <unistd.h>
 
 #define N 128
 #define BS 32
+#define BASENAME_CSV "result_matmul-blk-secuencial.csv"
+#define HEADER_CSV "sizeMatrix,sizeBlock,time\n"
 
-void inicializarMatrix(double *m, int n);
-
-/* Init square matrix */
-void initvalmat(double *mat, int n, int transpose);
+/* Init square matrix with a specific value */
+void initvalmat(double *mat, int n, double val, int transpose);
 
 /* Multiply square matrices, blocked version */
 void matmulblks(double *a, double *b, double *c, int n, int bs);
@@ -21,17 +22,19 @@ double dwalltime();
 
 void imprimeMatriz(double *M, int n);
 
+void guardarEjecucion(int sizeMatrix, int sizeBlock, double time);
+
 /************** MAIN *************/
 int main(int argc, char *argv[])
 {
 	double *a, *b, *c;
-	int n = N, bs = BS, i, j, print;
+	int check = 1, n = N, bs = BS, i, j;
 	double time, timetick;
 
 	/* Check command line parameters */
-	if ( (argc != 4) || ((n = atoi(argv[1])) <= 0) || ((bs = atoi(argv[2])) <= 0) || ((print = atoi(argv[3])) < 0) || ((n % bs) != 0))
+	if ( (argc != 3) || ((n = atoi(argv[1])) <= 0) || ((bs = atoi(argv[2])) <= 0) || ((n % bs) != 0))
 	{
-		printf("\nUsage: %s n bs print? \n  n: matrix order (nxn X nxn)\n  bs: block size (n should be multiple of bs)\n  print?: print result \n", argv[0]);
+		printf("\nUsage: %s n bs \n  n: matrix order (nxn X nxn)\n  bs: block size (n should be multiple of bs)\n", argv[0]);
 		exit(1);
 	}
 
@@ -41,10 +44,10 @@ int main(int argc, char *argv[])
 	c = (double *) malloc(n * n * sizeof(double));
 
 	/* Init matrix operands */
-	initvalmat(a, n, 0);
-	initvalmat(b, n, 1);
+	initvalmat(a, n, 1.0, 0);
+	initvalmat(b, n, 1.0, 1);
 	/* Init matrix c, just in case */
-	inicializarMatrix(c, n);
+	initvalmat(c, n, 0.0, 0);
 
 	timetick = dwalltime();
 
@@ -52,18 +55,33 @@ int main(int argc, char *argv[])
 
 	time =  dwalltime() - timetick;
 
-	printf("Multiplicación de matrices de %dx%d (bloque = %d) tomó %f segundos\n", n, n, bs, time);
+	printf("Multiplicación de matrices de %dx%d (bloque = %d) tomó %4f segundos\n", n, n, bs, time);
 
-	if (print == 1) {
-		printf("\n\n  A: \n" );
+	if (n <= 16) {
+		printf("\n  A: \n" );
 		imprimeMatriz(a, n);
 
-		printf("\n\n B: \n" );
+		printf("\n B: \n" );
 		imprimeMatriz(b, n);
 
-		printf("\n\n  C: \n" );
+		printf("\n  C: \n" );
 		imprimeMatriz(c, n);
 	}
+
+	// Check results
+	for (i = 0; i < n; i++) {
+		for (j = 0; j < n; j++) {
+			check = check && (c[i * n + j] == n);
+		}
+	}
+
+	// Print results
+	if (check)
+		printf("Multiplicacion de matrices resultado correcto\n");
+	else
+		printf("Multiplicacion de matrices resultado erroneo\n");
+
+	guardarEjecucion(n, bs, time);
 
 	free(a);
 	free(b);
@@ -74,17 +92,8 @@ int main(int argc, char *argv[])
 
 /*****************************************************************/
 
-void inicializarMatrix(double *m, int n) {
-	int i, j;
-	for (i = 0; i < n; i++) {
-		for (j = 0; j < n; j++) {
-			m[i * n + j] = 0.0;
-		}
-	}
-}
-
-/* Init square matrix */
-void initvalmat(double *mat, int n, int transpose)
+/* Init square matrix with a specific value */
+void initvalmat(double *mat, int n, double val, int transpose)
 {
 	int i, j;      /* Indexes */
 
@@ -93,7 +102,7 @@ void initvalmat(double *mat, int n, int transpose)
 		{
 			for (j = 0; j < n; j++)
 			{
-				mat[i * n + j] = i * n + j;
+				mat[i * n + j] = val;
 			}
 		}
 	} else {
@@ -101,7 +110,7 @@ void initvalmat(double *mat, int n, int transpose)
 		{
 			for (j = 0; j < n; j++)
 			{
-				mat[j * n + i] = i * n + j;
+				mat[j * n + i] = val;
 			}
 		}
 	}
@@ -121,7 +130,8 @@ void matmulblks(double *a, double *b, double *c, int n, int bs)
 			dispC = (ii * numBlocks + jj) * blockElems;
 			for (kk = 0; kk < numBlocks; kk++) {
 				dispA = (ii * numBlocks + kk) * blockElems;
-				dispB = (jj * numBlocks + kk) * blockElems;
+				dispB = (kk * numBlocks + jj) * blockElems;
+				//dispB = (jj * numBlocks + kk) * blockElems;
 				for (i = 0; i < bs; i++) {
 					for (j = 0; j < bs; j++) {
 						disp = dispC + i * bs + j;
@@ -155,4 +165,24 @@ void imprimeMatriz(double *M, int n) {
 		printf("\n ");
 	}
 	printf("\n");
+}
+
+FILE* makeOutfile(char* basename, char *header) {
+  FILE *outfile;
+  if ( access( basename, F_OK ) != -1 ) {
+    outfile = fopen(basename, "a");
+  } else {
+    outfile = fopen(basename, "w");
+    if (outfile != NULL)
+      fprintf(outfile, "%s", header);
+  }
+  if (outfile == NULL)
+    fprintf(stderr, "Cannot open outfile %s\n", basename);
+  return outfile;
+}
+
+void guardarEjecucion(int sizeMatrix, int sizeBlock, double time) {
+  FILE* outfile = makeOutfile(BASENAME_CSV, HEADER_CSV);
+  fprintf(outfile, "%d,%d,%4f\n", sizeMatrix, sizeBlock, time);
+  fclose(outfile);
 }
