@@ -131,7 +131,6 @@ void matmulblks(double *a, double *b, double *c, int n, int bs)
 			for (kk = 0; kk < numBlocks; kk++) {
 				dispA = (ii * numBlocks + kk) * blockElems;
 				dispB = (kk * numBlocks + jj) * blockElems;
-				//dispB = (jj * numBlocks + kk) * blockElems;
 				for (i = 0; i < bs; i++) {
 					for (j = 0; j < bs; j++) {
 						disp = dispC + i * bs + j;
