@@ -168,21 +168,21 @@ void imprimeMatriz(double *M, int n) {
 }
 
 FILE* makeOutfile(char* basename, char *header) {
-  FILE *outfile;
-  if ( access( basename, F_OK ) != -1 ) {
-    outfile = fopen(basename, "a");
-  } else {
-    outfile = fopen(basename, "w");
-    if (outfile != NULL)
-      fprintf(outfile, "%s", header);
-  }
-  if (outfile == NULL)
-    fprintf(stderr, "Cannot open outfile %s\n", basename);
-  return outfile;
+	FILE *outfile;
+	if ( access( basename, F_OK ) != -1 ) {
+		outfile = fopen(basename, "a");
+	} else {
+		outfile = fopen(basename, "w");
+		if (outfile != NULL)
+			fprintf(outfile, "%s", header);
+	}
+	if (outfile == NULL)
+		fprintf(stderr, "Cannot open outfile %s\n", basename);
+	return outfile;
 }
 
 void guardarEjecucion(int sizeMatrix, int sizeBlock, double time) {
-  FILE* outfile = makeOutfile(BASENAME_CSV, HEADER_CSV);
-  fprintf(outfile, "%d,%d,%4f\n", sizeMatrix, sizeBlock, time);
-  fclose(outfile);
+	FILE* outfile = makeOutfile(BASENAME_CSV, HEADER_CSV);
+	fprintf(outfile, "%d,%d,%4f\n", sizeMatrix, sizeBlock, time);
+	fclose(outfile);
 }
