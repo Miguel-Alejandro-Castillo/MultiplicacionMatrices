@@ -5,14 +5,14 @@
   * Para ejecutar: ./matmul-blk &lt;sizeMatrix&gt; &lt;sizeBlock&gt;
   
 * Paralelo(Master Worker)
-  *MPI
-     * Para compilar: mpicc -fopenmp -o multMatricesMW multMatricesMW.c
-     * Para ejecutar: mpirun -np &lt;processes&gt; --hostfile &lt;file_hosts&gt; mm2d &lt;sizeMatrix&gt; &lt;sizeBlock&gt; &lt;threads&gt;
+  * MPI
+     * Para compilar: mpicc -fopenmp -o matmul-blk-parallel matmul-blk-parallel.c
+     * Para ejecutar: mpirun -np &lt;processes&gt; --hostfile &lt;file_hosts&gt; matmul-blk-parallel &lt;sizeMatrix&gt; &lt;sizeBlock&gt; &lt;threads&gt;
                      <br/>  &lt;threads&gt; &nbsp;&nbsp;  =  &nbsp;&nbsp; 1
   
   * MPI + OpenMP
       * Para compilar: idem caso MPI
-      * Para ejecutar: mpirun -np &lt;processes&gt; --hostfile &lt;file_hosts&gt; mm2d &lt;sizeMatrix&gt; &lt;sizeBlock&gt; &lt;threads&gt;
+      * Para ejecutar: mpirun -np &lt;processes&gt; --hostfile &lt;file_hosts&gt; matmul-blk-parallel &lt;sizeMatrix&gt; &lt;sizeBlock&gt; &lt;threads&gt;
                         <br/> &lt;threads&gt; &nbsp;&nbsp; > &nbsp;&nbsp; 1
                     
  
