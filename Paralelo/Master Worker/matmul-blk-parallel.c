@@ -1,12 +1,12 @@
 /********************************************************************************************************
  *
- * Archivo: multMatricesMW.c
+ * Archivo: matmul-blk-parallel.c
  *
  * Multiplicacion de matrices cuadradas por bloques utilizando la Interfaz de Paso de Mensajes MPI
  * + OpenMP, modelo Master Worker
  *
  * Para compilar:
- * mpicc -fopenmp -o <executable> multMatricesMW.c
+ * mpicc -fopenmp -o <executable> matmul-blk-parallel.c
  *
  * Para ejecutar:
  * mpirun -np <processes> --hostfile <hostfile> <executable> <sizeMatrix> <sizeBlock> <threads>
@@ -20,9 +20,8 @@
 #include <omp.h>
 
 #define USAGE_MSG "Use mpirun -np <processes> --hostfile <hostfile> %s <sizeMatrix> <sizeBlock> <threads>\n"
-#define BASENAME_CSV "result_master-worker-parallel.csv"
+#define BASENAME_CSV "result_matmul-blk-parallel.csv"
 #define HEADER_CSV "sizeMatrix,sizeBlock,threads,time\n"
-#define MIN(a, b) ((a)<(b) ? (a) : (b))
 
 void imprimirMatrices(double *A, double *B, double * C, int N);
 void guardarEjecucion(int sizeMatrix, int sizeBlock, int threads, double time);
