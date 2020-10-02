@@ -25,13 +25,13 @@
 
 void imprimirMatrices(double *A, double *B, double * C, int N);
 void guardarEjecucion(int sizeMatrix, int sizeBlock, int threads, double time);
-void mulblks(double *BUFFER_A, double *B, double *BUFFER_C, int sizeMatrix, int sizeBlock, int nproc);
-void mulblksOpenMP(double *BUFFER_A, double *B, double *BUFFER_C, int sizeMatrix, int sizeBlock, int nproc, int threads);
-void matmulblks(double *a, double *b, double *c, int n, int bs);
-void getSubMatrix(double *matrix, int sizeMatrix, double *subMatrix, int iSubMatrix, int jSubMatrix, int sizeSubMatrix);
-void asignarResultado(double *matrix, int sizeMatrix, double *subMatrix, int iSubMatrix, int jSubMatrix, int sizeSubMatrix);
+void mulblks(double *a, double *b, double *c, int sizeMatrix, int sizeBlock, int nproc);
+void mulblksOpenMP(double *a, double *b, double *c, int sizeMatrix, int sizeBlock, int nproc, int threads);
+void matmulblks(double *a, double *b, double *c, int n, int bs, int iSubMatrix, int jSubMatrix, int kSubMatrix, int sizeSubMatrix);
 void initvalmat(double *mat, int n, double val, int transpose);
 long get_integer_arg(int argc, char* argv[], int arg_index, long min_val, const char* description, const char* usage_msg, bool print_flag, int id, void (*fun) (void) );
+void imprimirMatriz(double *M, int N);
+void inicializarMatrix(double *S, int sizeMatrix);
 
 int main(int argc, char **argv) {
   int nproc, myid, sizeMatrix, sizeBlock, threads;
@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
   MPI_Comm_size(comm, &nproc);
   MPI_Comm_rank(comm, &myid );
 
-  /* argumentos de linea de comandos */
+  /* Se obtienen los argumentos de linea de comandos */
   sizeMatrix = get_integer_arg(argc, argv, 1, 1, "sizeMatrix", USAGE_MSG, true, myid, (void (*)(void))MPI_Finalize);
   sizeBlock = get_integer_arg(argc, argv, 2, 1, "sizeBlock", USAGE_MSG, true, myid, (void (*)(void))MPI_Finalize);
   threads = get_integer_arg(argc, argv, 3, 1, "threads", USAGE_MSG, true, myid, (void (*)(void))MPI_Finalize);
@@ -64,13 +64,16 @@ int main(int argc, char **argv) {
   B = (double *)malloc(NxN * sizeof(double));
   BUFFER_A = (double *)malloc((NxN / nproc) * sizeof(double));
   BUFFER_C = (double *)malloc((NxN / nproc) * sizeof(double));
+  /* Se inicializa la matrix buffer_C con ceros */
+  inicializarMatrix(BUFFER_C, NxN / nproc);
 
   if (myid == 0) {
-    /*Se inicializan las matrices */
+    /* Se inicializan las matrices A y B */
     printf("\nInicializacion ...\n");
     A = (double *)malloc(NxN * sizeof(double));
     C = (double *)malloc(NxN * sizeof(double));
     initvalmat(A, sizeMatrix, 1.0, 0);
+    /* Se inicializa la matrix B transpuesta */
     initvalmat(B, sizeMatrix, 1.0, 1);
     printf("Ok!!\n\n");
 
@@ -82,14 +85,13 @@ int main(int argc, char **argv) {
   MPI_Scatter(A, NxN /  nproc, MPI_DOUBLE, BUFFER_A, NxN / nproc, MPI_DOUBLE, 0, comm);
   MPI_Bcast(B, NxN, MPI_DOUBLE, 0, comm);
 
-  /* Se realiza la multiplicacion */
+  /* Se realiza la multiplicacion, si la cantidad de threads es mayor a 1 se hace uso de OpenMP para el computo */
   if (threads == 1)
     mulblks(BUFFER_A, B, BUFFER_C, sizeMatrix, sizeBlock, nproc);
   else
     mulblksOpenMP(BUFFER_A, B, BUFFER_C, sizeMatrix, sizeBlock, nproc, threads);
 
-
-  /* Se envian y combinan los resultados */
+  /* Se envian y combinan los resultados en la matriz C */
   MPI_Gather(BUFFER_C, NxN / nproc, MPI_DOUBLE, C, NxN / nproc, MPI_DOUBLE, 0, comm);
 
   if (myid == 0) {
@@ -99,6 +101,7 @@ int main(int argc, char **argv) {
       imprimirMatrices(A, B, C, sizeMatrix);
     }
     printf("\nDuración total de la multiplicacion de matrices %4f segundos\n", t2 - t1);
+    /* La ejecucion se almacena en un archivo .csv */
     guardarEjecucion(sizeMatrix, sizeBlock, threads, t2 - t1);
     free(A);
     free(C);
@@ -111,92 +114,54 @@ int main(int argc, char **argv) {
   return 0;
 }
 
-void getSubMatrix(double *matrix, int sizeMatrix, double *subMatrix, int iSubMatrix, int jSubMatrix, int sizeSubMatrix) {
-  int i, j, iAuxMatrix, ixSizeSubMatrix;
-  int iAuxSubMatrix = iSubMatrix * sizeSubMatrix;
-  int jAuxSubMatrix = jSubMatrix * sizeSubMatrix;
-
-  for (i = 0; i < sizeSubMatrix; i++) {
-    iAuxMatrix = ((iAuxSubMatrix + i) * sizeMatrix) + jAuxSubMatrix;
-    ixSizeSubMatrix = i * sizeSubMatrix;
-    for ( j = 0; j < sizeSubMatrix; j++)
-    {
-      subMatrix[ixSizeSubMatrix + j] = matrix[iAuxMatrix + j];
-    }
-  }
-}
-
-void asignarResultado(double *matrix, int sizeMatrix, double *subMatrix, int iSubMatrix, int jSubMatrix, int sizeSubMatrix) {
-  int i, j, iAuxMatrix, ixSizeSubMatrix;
-  int iAuxSubMatrix = iSubMatrix * sizeSubMatrix;
-  int jAuxSubMatrix = jSubMatrix * sizeSubMatrix;
-
-  for (i = 0; i < sizeSubMatrix; i++) {
-    iAuxMatrix = ((iAuxSubMatrix + i) * sizeMatrix) + jAuxSubMatrix;
-    ixSizeSubMatrix = i * sizeSubMatrix;
-    for ( j = 0; j < sizeSubMatrix; j++)
-    {
-      matrix[iAuxMatrix + j] = subMatrix[ixSizeSubMatrix + j];
-    }
-  }
-}
-
-void mulblks(double *BUFFER_A, double *B, double *BUFFER_C, int sizeMatrix, int sizeBlock, int nproc) {
+void mulblks(double *a, double *b, double *c, int sizeMatrix, int sizeBlock, int nproc) {
   int sizeSubMatrix = sizeMatrix / nproc;
   int cantSubMatrix = sizeMatrix / sizeSubMatrix;
-  double *subMatrixA = (double *)malloc(sizeSubMatrix * sizeSubMatrix * sizeof(double));
-  double *subMatrixB = (double *)malloc(sizeSubMatrix * sizeSubMatrix * sizeof(double));
-  double *subMatrixC = (double *)malloc(sizeSubMatrix * sizeSubMatrix * sizeof(double));
-
+  int auxSizeBlock = sizeBlock > sizeSubMatrix ? sizeSubMatrix : sizeBlock;
   int j, k;
+
+  //Se multiplica una fila de cantSubMatrix submatrices de tamaño sizeSubMatrix cada una
   for ( j = 0; j < cantSubMatrix; j++) {
-    initvalmat(subMatrixC, sizeSubMatrix, 0.0, 0);
     for (k = 0; k < cantSubMatrix; k++) {
-      getSubMatrix(BUFFER_A, sizeMatrix, subMatrixA, 0, k, sizeSubMatrix);
-      getSubMatrix(B, sizeMatrix, subMatrixB, j, k, sizeSubMatrix);
-      matmulblks(subMatrixA, subMatrixB, subMatrixC, sizeSubMatrix, sizeBlock > sizeSubMatrix ? sizeSubMatrix : sizeBlock);
+      //Se multiplican 2 submatrices cuadradas de a y b, el resultado se guarda en una submatrix de c
+      matmulblks(a, b, c, sizeMatrix, auxSizeBlock, 0, j, k, sizeSubMatrix);
     }
-    asignarResultado(BUFFER_C, sizeMatrix, subMatrixC, 0, j, sizeSubMatrix);
   }
-
-  free(subMatrixC);
-  free(subMatrixB);
-  free(subMatrixA);
 }
 
-void mulblksOpenMP(double *BUFFER_A, double *B, double *BUFFER_C, int sizeMatrix, int sizeBlock, int nproc, int threads) {
+void mulblksOpenMP(double *a, double *b, double *c, int sizeMatrix, int sizeBlock, int nproc, int threads) {
   int sizeSubMatrix = sizeMatrix / nproc;
   int cantSubMatrix = sizeMatrix / sizeSubMatrix;
-  double *subMatrixA = (double *)malloc(sizeSubMatrix * sizeSubMatrix * sizeof(double));
-  double *subMatrixB = (double *)malloc(sizeSubMatrix * sizeSubMatrix * sizeof(double));
-  double *subMatrixC = (double *)malloc(sizeSubMatrix * sizeSubMatrix * sizeof(double));
+  int auxSizeBlock = sizeBlock > sizeSubMatrix ? sizeSubMatrix : sizeBlock;
   int j, k;
+
 
   omp_set_num_threads(threads);
-  #pragma omp parallel shared(BUFFER_A,B,BUFFER_C,sizeMatrix,sizeBlock,sizeSubMatrix,cantSubMatrix,subMatrixA,subMatrixB,subMatrixC) private(j,k)
+  #pragma omp parallel shared(a,b,c,sizeMatrix,auxSizeBlock,sizeSubMatrix,cantSubMatrix) private(j,k)
   {
     #pragma omp for schedule(static)
+    //Se multiplica una fila de cantSubMatrix submatrices de tamaño sizeSubMatrix cada una
     for ( j = 0; j < cantSubMatrix; j++) {
-      initvalmat(subMatrixC, sizeSubMatrix, 0.0, 0);
       for (k = 0; k < cantSubMatrix; k++) {
-        getSubMatrix(BUFFER_A, sizeMatrix, subMatrixA, 0, k, sizeSubMatrix);
-        getSubMatrix(B, sizeMatrix, subMatrixB, j, k, sizeSubMatrix);
-        matmulblks(subMatrixA, subMatrixB, subMatrixC, sizeSubMatrix, sizeBlock > sizeSubMatrix ? sizeSubMatrix : sizeBlock);
+        //Se multiplican 2 submatrices cuadradas de a y b, el resultado se guarda en una submatrix de c
+        matmulblks(a, b, c, sizeMatrix, auxSizeBlock, 0, j, k, sizeSubMatrix);
       }
-      asignarResultado(BUFFER_C, sizeMatrix, subMatrixC, 0, j, sizeSubMatrix);
     }
   }
-
-  free(subMatrixC);
-  free(subMatrixB);
-  free(subMatrixA);
 }
 
 /* Multiply square matrices, blocked version */
-void matmulblks(double *a, double *b, double *c, int n, int bs)
+void matmulblks(double *a, double *b, double *c, int n, int bs, int iSubMatrix, int jSubMatrix, int kSubMatrix, int sizeSubMatrix)
 {
   int i, j, k, ii, jj, kk, disp, dispA, dispB, dispC;
-  int numBlocks = n / bs;
+  int iAuxSubMatrix = iSubMatrix * sizeSubMatrix;
+  int jAuxSubMatrix = jSubMatrix * sizeSubMatrix;
+  int kAuxSubMatrix = kSubMatrix * sizeSubMatrix;
+  int auxDispC = iAuxSubMatrix * n + jAuxSubMatrix;
+  int auxDispA = iAuxSubMatrix * n + kAuxSubMatrix;
+  int auxDispB = kAuxSubMatrix * n + jAuxSubMatrix;
+
+  int numBlocks = sizeSubMatrix / bs;
   int blockElems = bs * bs;
 
   for (ii = 0; ii < numBlocks; ii++) {
@@ -207,9 +172,9 @@ void matmulblks(double *a, double *b, double *c, int n, int bs)
         dispB = (kk * numBlocks + jj) * blockElems;
         for (i = 0; i < bs; i++) {
           for (j = 0; j < bs; j++) {
-            disp = dispC + i * bs + j;
+            disp = dispC + (i * bs + j) + auxDispC;
             for (k = 0; k < bs; k++) {
-              c[disp] += a[dispA + i * bs + k] * b[dispB + j * bs + k];
+              c[disp] += a[dispA + (i * bs + k)  + auxDispA] * b[dispB + (j * bs + k) + auxDispB];
             }
           }
         }
@@ -219,30 +184,33 @@ void matmulblks(double *a, double *b, double *c, int n, int bs)
 }
 
 /* Init square matrix with a specific value */
-void initvalmat(double *mat, int n, double val, int transpose)
+void initvalmat(double * mat, int n, double val, int transpose)
 {
   int i, j;      /* Indexes */
 
   if (transpose == 0) {
-    for (i = 0; i < n; i++)
-    {
-      for (j = 0; j < n; j++)
-      {
+    for (i = 0; i < n; i++) {
+      for (j = 0; j < n; j++) {
         mat[i * n + j] = val;
       }
     }
   } else {
-    for (i = 0; i < n; i++)
-    {
-      for (j = 0; j < n; j++)
-      {
+    for (i = 0; i < n; i++) {
+      for (j = 0; j < n; j++) {
         mat[j * n + i] = val;
       }
     }
   }
 }
 
-void imprimirMatriz(double *M, int N)
+void inicializarMatrix(double * S, int sizeMatrix) {
+  int i;
+  for (i = 0; i < sizeMatrix ; i++) {
+    S[i] = 0.0;
+  };
+}
+
+void imprimirMatriz(double * M, int N)
 {
   int i, j;
   printf("Contenido de la matriz:  \n");
@@ -254,7 +222,7 @@ void imprimirMatriz(double *M, int N)
   printf("\n");
 }
 
-void imprimirMatrices(double *A, double *B, double * C, int N)
+void imprimirMatrices(double * A, double * B, double * C, int N)
 {
   printf("\n  A: \n");
   imprimirMatriz(A, N);
