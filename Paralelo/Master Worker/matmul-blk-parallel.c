@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
   B = (double *)malloc(NxN * sizeof(double));
   BUFFER_A = (double *)malloc((NxN / nproc) * sizeof(double));
   BUFFER_C = (double *)malloc((NxN / nproc) * sizeof(double));
-  /* Se inicializa la matrix buffer_C con ceros */
+  /* Se inicializa la submatrix buffer_C con ceros */
   inicializarMatrix(BUFFER_C, NxN / nproc);
 
   if (myid == 0) {
@@ -78,6 +78,7 @@ int main(int argc, char **argv) {
     printf("Ok!!\n\n");
 
     printf("Multiplicacion ...\n");
+    /* Inicia el conteo */
     t1 = MPI_Wtime();
   }
 
@@ -91,13 +92,15 @@ int main(int argc, char **argv) {
   else
     mulblksOpenMP(BUFFER_A, B, BUFFER_C, sizeMatrix, sizeBlock, nproc, threads);
 
-  /* Se envian y combinan los resultados en la matriz C */
+  /* Se envian(submatrices buffer_c) y combinan los resultados en la matriz c */
   MPI_Gather(BUFFER_C, NxN / nproc, MPI_DOUBLE, C, NxN / nproc, MPI_DOUBLE, 0, comm);
 
   if (myid == 0) {
+    /* Finaliza el conteo */
     t2 = MPI_Wtime();
     printf("Ok!!\n\n");
     if (sizeMatrix <= 16) {
+      //Se imprime en pantalla las matrices a, b y c
       imprimirMatrices(A, B, C, sizeMatrix);
     }
     printf("\nDuración total de la multiplicacion de matrices %4f segundos\n", t2 - t1);
@@ -150,7 +153,7 @@ void mulblksOpenMP(double *a, double *b, double *c, int sizeMatrix, int sizeBloc
   }
 }
 
-/* Multiply square matrices, blocked version */
+/* Multiply square submatrices, blocked version */
 void matmulblks(double *a, double *b, double *c, int n, int bs, int iSubMatrix, int jSubMatrix, int kSubMatrix, int sizeSubMatrix)
 {
   int i, j, k, ii, jj, kk, disp, dispA, dispB, dispC;
