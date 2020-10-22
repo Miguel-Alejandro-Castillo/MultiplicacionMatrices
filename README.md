@@ -1,18 +1,18 @@
 # Multiplicación de Matrices Cuadradas por Bloques MPI + OpenMP
 
 * Secuencial
-  * Para compilar: gcc -o matmul-blk matmul-blk.c
-  * Para ejecutar: ./matmul-blk &lt;sizeMatrix&gt; &lt;sizeBlock&gt;
+  * Para compilar: gcc -o matmul-block matmul-block.c
+  * Para ejecutar: ./matmul-block &lt;sizeMatrix&gt; &lt;sizeBlock&gt;
   
 * Paralelo(Master Worker)
   * MPI
-     * Para compilar: mpicc -fopenmp -o matmul-blk-parallel matmul-blk-parallel.c
-     * Para ejecutar: mpirun -np &lt;processes&gt; --hostfile &lt;file_hosts&gt; matmul-blk-parallel &lt;sizeMatrix&gt; &lt;sizeBlock&gt; &lt;threads&gt;
+     * Para compilar: mpicc -fopenmp -o matmul-block-parallel matmul-block-parallel.c
+     * Para ejecutar: mpirun -np &lt;processes&gt; --hostfile &lt;file_hosts&gt; matmul-block-parallel &lt;sizeMatrix&gt; &lt;sizeBlock&gt; &lt;threads&gt;
                      <br/>  &lt;threads&gt; &nbsp;&nbsp;  =  &nbsp;&nbsp; 1
   
   * MPI + OpenMP
       * Para compilar: idem caso MPI
-      * Para ejecutar: mpirun -np &lt;processes&gt; --hostfile &lt;file_hosts&gt; matmul-blk-parallel &lt;sizeMatrix&gt; &lt;sizeBlock&gt; &lt;threads&gt;
+      * Para ejecutar: mpirun -np &lt;processes&gt; --hostfile &lt;file_hosts&gt; matmul-block-parallel &lt;sizeMatrix&gt; &lt;sizeBlock&gt; &lt;threads&gt;
                         <br/> &lt;threads&gt; &nbsp;&nbsp; > &nbsp;&nbsp; 1
                     
  
