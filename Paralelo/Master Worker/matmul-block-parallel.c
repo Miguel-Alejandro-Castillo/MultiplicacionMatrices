@@ -26,9 +26,8 @@
 
 void imprimirMatrices(double *A, double *B, double * C, int N);
 void guardarEjecucion(int sizeMatrix, int sizeBlock, int threads, double time);
-//void mulblks(double *a, double *b, double *c, int sizeMatrix, int sizeBlock, int nproc);
-//void mulblksOpenMP(double *a, double *b, double *c, int sizeMatrix, int sizeBlock, int nproc, int threads);
 void matmulblks(double *a, double *b, double *c, int n, int bs, int p);
+void matmulblksOpenMP(double *a, double *b, double *c, int n, int bs, int p, int t);
 long get_integer_arg(int argc, char* argv[], int arg_index, long min_val, const char* description, const char* usage_msg, bool print_flag, int id, void (*fun) (void) );
 void imprimirMatriz(double *M, int N);
 void initializeMatrix(double *S, int sizeMatrix);
@@ -66,7 +65,7 @@ int main(int argc, char **argv) {
   BUFFER_C = (double *)malloc((NxN / nproc) * sizeof(double));
   BUFFER_A = (double *)malloc((NxN / nproc) * sizeof(double));
   B = (double *)malloc(NxN * sizeof(double));
-  
+
   /* Se inicializa la submatrix buffer_C con ceros */
   initializeMatrix(BUFFER_C, NxN / nproc);
 
@@ -91,10 +90,10 @@ int main(int argc, char **argv) {
   MPI_Bcast(B, NxN, MPI_DOUBLE, 0, comm);
 
   /* Se realiza la multiplicacion, si la cantidad de threads es mayor a 1 se hace uso de OpenMP para el computo */
-  //if (threads == 1)
-  matmulblks(BUFFER_A, B, BUFFER_C, sizeMatrix, sizeBlock, nproc);
-  //else
-  //  mulblksOpenMP(BUFFER_A, B, BUFFER_C, sizeMatrix, sizeBlock, nproc, threads);
+  if (threads == 1)
+    matmulblks(BUFFER_A, B, BUFFER_C, sizeMatrix, sizeBlock, nproc);
+  else
+    matmulblksOpenMP(BUFFER_A, B, BUFFER_C, sizeMatrix, sizeBlock, nproc, threads);
 
   /* Se envian(submatrices buffer_c) y combinan los resultados en la matriz c */
   MPI_Gather(BUFFER_C, NxN / nproc, MPI_DOUBLE, C, NxN / nproc, MPI_DOUBLE, 0, comm);
@@ -148,28 +147,35 @@ void matmulblks(double *a, double *b, double *c, int n, int bs, int p)
   }
 }
 
-/*
-void mulblksOpenMP(double *a, double *b, double *c, int sizeMatrix, int sizeBlock, int nproc, int threads) {
-  int sizeSubMatrix = sizeMatrix / nproc;
-  int cantSubMatrix = sizeMatrix / sizeSubMatrix;
-  int auxSizeBlock = sizeBlock > sizeSubMatrix ? sizeSubMatrix : sizeBlock;
-  int j, k;
-
-
-  omp_set_num_threads(threads);
-  #pragma omp parallel shared(a,b,c,sizeMatrix,auxSizeBlock,sizeSubMatrix,cantSubMatrix) private(j,k)
+void matmulblksOpenMP(double *a, double *b, double *c, int n, int bs, int p, int t)
+{
+  int i0, j0, k0, i, j, k;
+  int dispA, dispB, dispC;
+  double temp;
+  omp_set_num_threads(t);
+  #pragma omp parallel shared(c,a,b,n,bs,p) private(i0,j0,k0,i,j,k,dispA,dispB,dispC,temp)
   {
     #pragma omp for schedule(static)
-    //Se multiplica una fila de cantSubMatrix submatrices de tamaño sizeSubMatrix cada una
-    for ( j = 0; j < cantSubMatrix; j++) {
-      for (k = 0; k < cantSubMatrix; k++) {
-        //Se multiplican 2 submatrices cuadradas de a y b, el resultado se guarda en una submatrix de c
-        matmulblks(a, b, c, sizeMatrix, auxSizeBlock, 0, j, k, sizeSubMatrix);
+    for (i0 = 0; i0 < n / p; i0 += bs) {
+      for (j0 = 0; j0 < n; j0 += bs) {
+        for (k0 = 0; k0 < n; k0 += bs) {
+          for (i = i0; i < min(i0 + bs, n / p); i++) {
+            dispC = i * n;
+            dispA = i * n;
+            for (j = j0; j < min(j0 + bs, n); j++) {
+              temp = 0.0;
+              dispB = j * n;
+              for (k = k0; k < min(k0 + bs, n); k++) {
+                temp += a[dispA + k] * b[dispB + k];
+              }
+              c[dispC + j] += temp;
+            }
+          }
+        }
       }
     }
   }
 }
-*/
 
 /* Init square matrix with a specific value */
 void initmat(double *m, int n, int transpose) {
