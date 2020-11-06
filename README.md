@@ -7,8 +7,7 @@
 * Paralelo(Master Worker)
   * MPI
      * Compilar: mpicc matmul-block-parallel.c -fopenmp -O2 -o matmul-block-parallel
-     * Ejecutar: mpirun -np &lt;processes&gt; --hostfile &lt;file_hosts&gt; matmul-block-parallel &lt;sizeMatrix&gt; &lt;sizeBlock&gt; &lt;threads&gt;
-                     <br/>  &lt;threads&gt; &nbsp;&nbsp;  =  &nbsp;&nbsp; 1
+     * Ejecutar: mpirun -np &lt;processes&gt; --hostfile &lt;file_hosts&gt; matmul-block-parallel &lt;sizeMatrix&gt; &lt;sizeBlock&gt; 1
   
   * MPI + OpenMP
       * Compilar: idem caso MPI
