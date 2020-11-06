@@ -20,12 +20,13 @@
 #include <omp.h>
 
 #define USAGE_MSG "Use mpirun -np <processes> --hostfile <hostfile> %s <sizeMatrix> <sizeBlock> <threads>\n"
-#define BASENAME_CSV "result_matmul-block-parallel.csv"
+#define BASENAME_MPI_CSV "result_matmul-block-mpi.csv"
+#define BASENAME_MPI_OPENMP_CSV "result_matmul-block-mpi+openmp.csv"
 #define HEADER_CSV "sizeMatrix,sizeBlock,threads,time\n"
 #define min(a, b) ((a)<(b) ? (a) : (b))
 
 void imprimirMatrices(double *A, double *B, double * C, int N);
-void guardarEjecucion(int sizeMatrix, int sizeBlock, int threads, double time);
+void guardarEjecucion(int nproc, int sizeMatrix, int sizeBlock, int threads, double time);
 void matmulblks(double *a, double *b, double *c, int n, int bs, int p);
 void matmulblksOpenMP(double *a, double *b, double *c, int n, int bs, int p, int t);
 long get_integer_arg(int argc, char* argv[], int arg_index, long min_val, const char* description, const char* usage_msg, bool print_flag, int id, void (*fun) (void) );
@@ -108,7 +109,7 @@ int main(int argc, char **argv) {
     }
     printf("\nDuración total de la multiplicacion de matrices %4f segundos\n\n", t2 - t1);
     /* La ejecucion se almacena en un archivo .csv */
-    guardarEjecucion(sizeMatrix, sizeBlock, threads, t2 - t1);
+    guardarEjecucion(nproc, sizeMatrix, sizeBlock, threads, t2 - t1);
     free(A);
     free(C);
   }
@@ -235,17 +236,24 @@ FILE* makeOutfile(char* basename, char *header) {
     outfile = fopen(basename, "a");
   } else {
     outfile = fopen(basename, "w");
-    if (outfile != NULL)
-      fprintf(outfile, "%s", header);
+    //if (outfile != NULL)
+    //  fprintf(outfile, "%s", header);
   }
   if (outfile == NULL)
     fprintf(stderr, "Cannot open outfile %s\n", basename);
   return outfile;
 }
 
-void guardarEjecucion(int sizeMatrix, int sizeBlock, int threads, double time) {
-  FILE* outfile = makeOutfile(BASENAME_CSV, HEADER_CSV);
-  fprintf(outfile, "%d,%d,%d,%4f\n", sizeMatrix, sizeBlock, threads, time);
+void guardarEjecucion(int nproc, int sizeMatrix, int sizeBlock, int threads, double time) {
+  FILE* outfile;
+  if(threads == 1) {
+	outfile = makeOutfile(BASENAME_MPI_CSV, HEADER_CSV);
+	fprintf(outfile, "\"(%d,%d,%d)\",%4f\n", nproc, sizeMatrix, sizeBlock, time);
+  } else {
+	outfile = makeOutfile(BASENAME_MPI_OPENMP_CSV, HEADER_CSV);
+	fprintf(outfile, "\"(%d,%d,%d,%d)\",%4f\n", nproc, sizeMatrix, sizeBlock, threads, time);
+  }
+  //fprintf(outfile, "%d,%d,%d,%4f\n", sizeMatrix, sizeBlock, threads, time);
   fclose(outfile);
 }
 
