@@ -5,9 +5,15 @@
 #include<sys/time.h>
 #include <unistd.h>
 
+#include <fcntl.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <semaphore.h>
+
 #define BASENAME_CSV "result_matmul-block-secuencial.csv"
 #define HEADER_CSV "sizeMatrix,sizeBlock,time\n"
 #define min(a, b) ((a)<(b) ? (a) : (b))
+#define SEM_NAME "/semsecuencial"
 
 /* Init square matrix  */
 void initvalmat(double *m, int n, double val, int transpose);
@@ -69,7 +75,16 @@ int main(int argc, char *argv[])
 		printMatrix(c, n);
 	}
 
-	saveExecution(n, bs, time);
+    sem_t *sem;
+    sem = sem_open(SEM_NAME, O_CREAT|O_EXCL, S_IRUSR|S_IWUSR, 1);
+    if (sem ==  SEM_FAILED && errno == EEXIST) {
+      //printf("semaphore  appears  to  exist  already !\n");
+      sem = sem_open(SEM_NAME , 0);
+    }
+    sem_wait(sem);
+    saveExecution(n, bs, time);
+    sem_post(sem);
+    sem_close(sem);
 
 	free(a);
 	free(b);
