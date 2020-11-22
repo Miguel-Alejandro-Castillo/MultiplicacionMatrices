@@ -194,8 +194,8 @@ FILE* makeOutfile(char* basename, char *header) {
 		outfile = fopen(basename, "a");
 	} else {
 		outfile = fopen(basename, "w");
-		//if (outfile != NULL)
-		//	fprintf(outfile, "%s", header);
+		if (outfile != NULL)
+			fprintf(outfile, "%s", header);
 	}
 	if (outfile == NULL)
 		fprintf(stderr, "Cannot open outfile %s\n", basename);
@@ -204,7 +204,7 @@ FILE* makeOutfile(char* basename, char *header) {
 
 void saveExecution(int sizeMatrix, int sizeBlock, double time) {
 	FILE* outfile = makeOutfile(BASENAME_CSV, HEADER_CSV);
-	//fprintf(outfile, "%d,%d,%4f\n", sizeMatrix, sizeBlock, time);
-	fprintf(outfile, "\"(%d,%d)\",%4f\n", sizeMatrix, sizeBlock, time);
+	fprintf(outfile, "%d,%d,%4f\n", sizeMatrix, sizeBlock, time);
+	//fprintf(outfile, "\"(%d,%d)\",%4f\n", sizeMatrix, sizeBlock, time);
 	fclose(outfile);
 }
